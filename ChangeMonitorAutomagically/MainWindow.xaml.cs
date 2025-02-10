@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,35 +12,54 @@ namespace ChangeMonitorAutomagically;
 /// </summary>
 public partial class MainWindow
 {
-    private object _lockObject = new();
+    private const int WorkMonitor = 17;
+    private const int HomeMonitor = 15;
+    private readonly Lock _lockObject = new();
 
-    private Task CurrentChangeMonitorRequest { get; set; } = Task.CompletedTask;
+    private CancellationTokenSource CancellationTokenSource { get; } = new();
+    private Task? ChangeMonitorTask { get; set; }
 
-    private CancellationTokenSource CancellationTokenSource { get; set; }
+    private bool _onHomeComputer = true;
 
     public MainWindow()
     {
         InitializeComponent();
     }
 
-    protected override void OnSourceInitialized(EventArgs e)
+    protected override void OnClosing(CancelEventArgs e)
     {
-        base.OnSourceInitialized(e);
+        CancellationTokenSource.Cancel();
+        base.OnClosing(e);
+    }
 
-        var deviceNotificationArrivalSubscription = DeviceNotification
+    protected override void OnInitialized(EventArgs e)
+    {
+        base.OnInitialized(e);
+
+        _ = DeviceNotification
             .OnDeviceArrival()
             .Subscribe(UsbDeviceAdded);
 
-        var deviceNotificationRemovalSubscription = DeviceNotification
+        _ = DeviceNotification
             .OnDeviceRemoved()
             .Subscribe(UsbDeviceRemoved);
+
+        ChangeMonitorTask = Task.Run(() =>
+        {
+            while (!CancellationTokenSource.IsCancellationRequested)
+            {
+                Task.Delay(TimeSpan.FromSeconds(5), CancellationTokenSource.Token).Wait();
+                ChangeMonitor();
+            }
+        });
     }
 
     private void UsbDeviceRemoved(DeviceInterfaceChangeInfo device)
     {
         if (device.Device.FriendlyDeviceName.Contains("Logitech BRIO"))
         {
-            ChangeMonitor(17);
+            _onHomeComputer = false;
+            ChangeMonitor();
         }
     }
 
@@ -47,30 +67,29 @@ public partial class MainWindow
     {
         if (device.Device.FriendlyDeviceName.Contains("Logitech BRIO"))
         {
-            ChangeMonitor(15);
+            _onHomeComputer = true;
+            ChangeMonitor();
         }
     }
 
-    private void ChangeMonitor(int monitorId)
+    private void ChangeMonitor()
     {
         lock (_lockObject)
         {
-            CancellationTokenSource?.Cancel();
-            CurrentChangeMonitorRequest.Wait();
-            CancellationTokenSource = new CancellationTokenSource();
-            CurrentChangeMonitorRequest = Task.Run(() =>
+            if (CancellationTokenSource.IsCancellationRequested)
             {
-                for (int i = 0; i < 12; i++)
-                {
-                    if (CancellationTokenSource.IsCancellationRequested)
-                    {
-                        return;
-                    }
+                return;
+            }
 
-                    Process.Start(@"C:\ControlMyMonitor\ControlMyMonitor.exe", $@"/SetValue ""\\.\DISPLAY1\Monitor0"" 60 {monitorId}");
-                    CancellationTokenSource.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(10));
-                }
-            });
+            var monitorId = _onHomeComputer ? HomeMonitor : WorkMonitor;
+
+            Process.Start(@"C:\ControlMyMonitor\ControlMyMonitor.exe", $@"/SetValue ""\\.\DISPLAY1\Monitor0"" 60 {monitorId}");
+
+            if (!_onHomeComputer)
+            {
+                Process.Start(@"C:\ControlMyMonitor\hidapitester.exe",
+                    $@"--vidpid 046D:C52B --usage 0x0001 --usagePage 0xFF00 --open --length 7 --send-output 0x10,0x01,0x0c,0x1e,0x00,0x00,0x00");
+            }
         }
     }
 }
