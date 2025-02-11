@@ -58,13 +58,13 @@ public partial class MainWindow
     {
         lock (_lockObject)
         {
-            if (!device.Device.FriendlyDeviceName.Contains("Logitech BRIO") || !_onHomeComputer)
+            if (!device.Device.FriendlyDeviceName.Contains("Logitech BRIO") || !_onWorkComputer)
             {
                 return;
             }
             if (device.Device.FriendlyDeviceName.Contains("Logitech BRIO"))
             {
-                _onHomeComputer = false;
+                _onWorkComputer = false;
             }
         }
 
@@ -72,7 +72,7 @@ public partial class MainWindow
         {
             lock (_lockObject)
             {
-                if (_onHomeComputer || CancellationTokenSource.IsCancellationRequested)
+                if (_onWorkComputer || CancellationTokenSource.IsCancellationRequested)
                 {
                     break;
                 }
@@ -87,13 +87,13 @@ public partial class MainWindow
     {
         lock (_lockObject)
         {
-            if (!device.Device.FriendlyDeviceName.Contains("Logitech BRIO") || _onHomeComputer)
+            if (!device.Device.FriendlyDeviceName.Contains("Logitech BRIO") || _onWorkComputer)
             {
                 return;
             }
             if (device.Device.FriendlyDeviceName.Contains("Logitech BRIO"))
             {
-                _onHomeComputer = true;
+                _onWorkComputer = true;
             }
         }
 
@@ -101,7 +101,7 @@ public partial class MainWindow
         {
             lock (_lockObject)
             {
-                if (!_onHomeComputer || CancellationTokenSource.IsCancellationRequested)
+                if (!_onWorkComputer || CancellationTokenSource.IsCancellationRequested)
                 {
                     break;
                 }
@@ -121,7 +121,7 @@ public partial class MainWindow
                 return;
             }
 
-            var monitorId = _onWorkComputer ? HomeMonitor : WorkMonitor;
+            var monitorId = _onWorkComputer ? WorkMonitor: HomeMonitor;
 
             // Process.Start(@"C:\ControlMyMonitor\ControlMyMonitor.exe", $@"/SetValue ""\\.\DISPLAY1\Monitor0"" 60 {monitorId}");
 
