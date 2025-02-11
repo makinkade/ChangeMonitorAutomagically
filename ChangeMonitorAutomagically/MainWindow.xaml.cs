@@ -19,7 +19,7 @@ public partial class MainWindow
     private CancellationTokenSource CancellationTokenSource { get; } = new();
     private Task? ChangeMonitorTask { get; set; }
 
-    private bool _onHomeComputer = true;
+    private bool _onWorkComputer = true;
 
     public MainWindow()
     {
@@ -58,7 +58,7 @@ public partial class MainWindow
     {
         if (device.Device.FriendlyDeviceName.Contains("Logitech BRIO"))
         {
-            _onHomeComputer = false;
+            _onWorkComputer = false;
             ChangeMonitor();
         }
     }
@@ -67,7 +67,7 @@ public partial class MainWindow
     {
         if (device.Device.FriendlyDeviceName.Contains("Logitech BRIO"))
         {
-            _onHomeComputer = true;
+            _onWorkComputer = true;
             ChangeMonitor();
         }
     }
@@ -81,14 +81,14 @@ public partial class MainWindow
                 return;
             }
 
-            var monitorId = _onHomeComputer ? HomeMonitor : WorkMonitor;
+            var monitorId = _onWorkComputer ? HomeMonitor : WorkMonitor;
 
-            Process.Start(@"C:\ControlMyMonitor\ControlMyMonitor.exe", $@"/SetValue ""\\.\DISPLAY1\Monitor0"" 60 {monitorId}");
+            // Process.Start(@"C:\ControlMyMonitor\ControlMyMonitor.exe", $@"/SetValue ""\\.\DISPLAY1\Monitor0"" 60 {monitorId}");
 
-            if (!_onHomeComputer)
+            if (!_onWorkComputer)
             {
                 Process.Start(@"C:\ControlMyMonitor\hidapitester.exe",
-                    $@"--vidpid 046D:C52B --usage 0x0001 --usagePage 0xFF00 --open --length 7 --send-output 0x10,0x01,0x0c,0x1e,0x00,0x00,0x00");
+                    $@"--vidpid 046D:C52B --usage 0x0001 --usagePage 0xFF00 --open --length 7 --send-output 0x10,0x02,0x0c,0x1e,0x01,0x00,0x00");
             }
         }
     }
