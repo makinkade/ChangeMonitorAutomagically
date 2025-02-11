@@ -48,7 +48,7 @@ public partial class MainWindow
         {
             while (!CancellationTokenSource.IsCancellationRequested)
             {
-                Task.Delay(TimeSpan.FromSeconds(5), CancellationTokenSource.Token).Wait();
+                Task.Delay(TimeSpan.FromMinutes(60), CancellationTokenSource.Token).Wait();
                 ChangeMonitor();
             }
         });
@@ -56,19 +56,59 @@ public partial class MainWindow
 
     private void UsbDeviceRemoved(DeviceInterfaceChangeInfo device)
     {
-        if (device.Device.FriendlyDeviceName.Contains("Logitech BRIO"))
+        lock (_lockObject)
         {
-            _onWorkComputer = false;
-            ChangeMonitor();
+            if (!device.Device.FriendlyDeviceName.Contains("Logitech BRIO") || !_onHomeComputer)
+            {
+                return;
+            }
+            if (device.Device.FriendlyDeviceName.Contains("Logitech BRIO"))
+            {
+                _onHomeComputer = false;
+            }
+        }
+
+        for (int x = 0; x < 12; x++)
+        {
+            lock (_lockObject)
+            {
+                if (_onHomeComputer || CancellationTokenSource.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                ChangeMonitor();
+                Task.Delay(TimeSpan.FromSeconds(5), CancellationTokenSource.Token).Wait();
+            }
         }
     }
 
     private void UsbDeviceAdded(DeviceInterfaceChangeInfo device)
     {
-        if (device.Device.FriendlyDeviceName.Contains("Logitech BRIO"))
+        lock (_lockObject)
         {
-            _onWorkComputer = true;
-            ChangeMonitor();
+            if (!device.Device.FriendlyDeviceName.Contains("Logitech BRIO") || _onHomeComputer)
+            {
+                return;
+            }
+            if (device.Device.FriendlyDeviceName.Contains("Logitech BRIO"))
+            {
+                _onHomeComputer = true;
+            }
+        }
+
+        for (int x = 0; x < 12; x++)
+        {
+            lock (_lockObject)
+            {
+                if (!_onHomeComputer || CancellationTokenSource.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                ChangeMonitor();
+                Task.Delay(TimeSpan.FromSeconds(5), CancellationTokenSource.Token).Wait();
+            }
         }
     }
 
